@@ -151,7 +151,7 @@ Examples:
 	// Default entry types based on context
 	if len(flags.entryTypes) == 0 {
 		// If depth is specified, default to bids and offers (order book data)
-		if flags.marketDepth != "" && flags.marketDepth != "0" {
+		if flags.marketDepth != "" {
 			flags.entryTypes = []string{constants.MdEntryTypeBid, constants.MdEntryTypeOffer}
 		} else {
 			// Otherwise default to trades
