@@ -31,35 +31,41 @@ import (
 	"github.com/quickfixgo/quickfix"
 )
 
-type FixApp struct {
+type Config struct {
 	ApiKey       string
 	ApiSecret    string
 	Passphrase   string
 	SenderCompId string
 	TargetCompId string
 	PortfolioId  string
+}
+
+type FixApp struct {
+	Config *Config
 
 	SessionId  quickfix.SessionID
 	TradeStore *TradeStore
 	DB         *database.MarketDataDB
 }
 
-func NewFixApp(
-	apiKey, apiSecret, passphrase,
-	senderCompId, targetCompId, portfolioId string,
-	db *database.MarketDataDB,
-) *FixApp {
-	tradeStore := NewTradeStore(10000, "")
-
-	return &FixApp{
+func NewConfig(apiKey, apiSecret, passphrase, senderCompId, targetCompId, portfolioId string) *Config {
+	return &Config{
 		ApiKey:       apiKey,
 		ApiSecret:    apiSecret,
 		Passphrase:   passphrase,
 		SenderCompId: senderCompId,
 		TargetCompId: targetCompId,
 		PortfolioId:  portfolioId,
-		TradeStore:   tradeStore,
-		DB:           db,
+	}
+}
+
+func NewFixApp(config *Config, db *database.MarketDataDB) *FixApp {
+	tradeStore := NewTradeStore(10000, "")
+
+	return &FixApp{
+		Config:     config,
+		TradeStore: tradeStore,
+		DB:         db,
 	}
 }
 
@@ -92,11 +98,11 @@ func (a *FixApp) ToAdmin(msg *quickfix.Message, _ quickfix.SessionID) {
 		builder.BuildLogon(
 			&msg.Body,
 			ts,
-			a.ApiKey,
-			a.ApiSecret,
-			a.Passphrase,
-			a.TargetCompId,
-			a.PortfolioId,
+			a.Config.ApiKey,
+			a.Config.ApiSecret,
+			a.Config.Passphrase,
+			a.Config.TargetCompId,
+			a.Config.PortfolioId,
 		)
 	}
 }
@@ -126,10 +132,8 @@ func (a *FixApp) handleMarketDataReject(msg *quickfix.Message) {
 		log.Printf("   Text: %s", text)
 	}
 
-	// Remove the rejected subscription from tracking
 	a.TradeStore.RemoveSubscriptionByReqID(mdReqID)
 
-	// Provide specific guidance based on rejection reason
 	switch rejReason {
 	case "0":
 		log.Printf("Try a different symbol format (e.g., BTCUSD vs BTC-USD)")
@@ -180,44 +184,33 @@ func (a *FixApp) handleMarketDataMessage(msg *quickfix.Message) {
 	log.Printf("Market Data %s for %s (ReqID: %s, Entries: %s, Seq: %s)",
 		getMarketDataTypeName(msgType), symbol, mdReqID, noMDEntries, seqNum)
 
-	// Extract all trades from the message
 	trades := a.extractTrades(msg, symbol, mdReqID, isSnapshot, seqNum)
 
-	// Add to trade store (for in-memory display)
 	a.TradeStore.AddTrades(symbol, trades, isSnapshot, mdReqID)
 
-	// Store to database
 	a.storeTradesToDatabase(trades, seqNum, isSnapshot)
 
-	// Display based on message type
 	if isSnapshot {
-		// Full table display for snapshots
 		a.displaySnapshotTrades(trades, symbol)
 	} else if isIncremental {
-		// Single-line updates for streaming
 		a.displayIncrementalTrades(trades)
 	}
 }
 
 func (a *FixApp) extractTrades(msg *quickfix.Message, symbol, mdReqID string, isSnapshot bool, seqNum string) []Trade {
-	// Use improved raw parsing that handles FIX repeating groups properly
 	return a.extractTradesImproved(msg, symbol, mdReqID, isSnapshot, seqNum)
 }
 
-// Improved parsing that handles FIX repeating groups correctly
 func (a *FixApp) extractTradesImproved(msg *quickfix.Message, symbol, mdReqID string, isSnapshot bool, seqNum string) []Trade {
 	rawMsg := msg.String()
 
-	// Find the number of MD entries
 	noMDEntriesStr := utils.GetString(msg, constants.TagNoMdEntries)
 	if noMDEntriesStr == "" || noMDEntriesStr == "0" {
 		return []Trade{}
 	}
 
-	// Find entry boundaries in the raw message
 	entryStarts := a.findEntryBoundaries(rawMsg)
 
-	// Parse each entry into a trade
 	var trades []Trade
 	for i, startPos := range entryStarts {
 		endPos := a.getEntryEndPos(entryStarts, i, len(rawMsg))
@@ -230,7 +223,6 @@ func (a *FixApp) extractTradesImproved(msg *quickfix.Message, symbol, mdReqID st
 	return trades
 }
 
-// findEntryBoundaries locates all MDEntryType markers in the raw message
 func (a *FixApp) findEntryBoundaries(rawMsg string) []int {
 	var entryStarts []int
 	searchFrom := 0
@@ -245,7 +237,6 @@ func (a *FixApp) findEntryBoundaries(rawMsg string) []int {
 	return entryStarts
 }
 
-// getEntryEndPos determines where an entry ends in the message
 func (a *FixApp) getEntryEndPos(entryStarts []int, currentIndex, msgLen int) int {
 	if currentIndex < len(entryStarts)-1 {
 		return entryStarts[currentIndex+1]
@@ -253,7 +244,6 @@ func (a *FixApp) getEntryEndPos(entryStarts []int, currentIndex, msgLen int) int
 	return msgLen
 }
 
-// parseTradeFromSegment extracts trade fields from a message segment
 func (a *FixApp) parseTradeFromSegment(segment, symbol, mdReqID string, isSnapshot bool, seqNum string, entryIndex int) Trade {
 	trade := Trade{
 		Timestamp:  time.Now(),
@@ -264,7 +254,6 @@ func (a *FixApp) parseTradeFromSegment(segment, symbol, mdReqID string, isSnapsh
 		SeqNum:     seqNum,
 	}
 
-	// Extract standard fields
 	if entryType := extractSingleFieldValue(segment, "269="); entryType != "" {
 		trade.EntryType = entryType
 	}
@@ -278,17 +267,14 @@ func (a *FixApp) parseTradeFromSegment(segment, symbol, mdReqID string, isSnapsh
 		trade.Time = timeVal
 	}
 
-	// Handle position field with fallback
 	if position := extractSingleFieldValue(segment, "290="); position != "" {
 		trade.Position = position
 	} else {
-		// If no explicit position, use order in message for book levels
 		if trade.EntryType == "0" || trade.EntryType == "1" { // Bids or Offers
 			trade.Position = fmt.Sprintf("%d", entryIndex+1)
 		}
 	}
 
-	// Handle aggressor field
 	if aggressor := extractSingleFieldValue(segment, "2446="); aggressor != "" {
 		trade.Aggressor = getAggressorSideDesc(aggressor)
 	}
@@ -393,7 +379,6 @@ func (a *FixApp) createDatabaseSession(symbol, subscriptionType, marketDepth str
 		}
 	}
 
-	// Create session record
 	sessionId := fmt.Sprintf("%s_%s_%d", symbol, requestType, time.Now().Unix())
 	err := a.DB.CreateSession(sessionId, symbol, requestType, dataTypes, reqID, depth)
 	if err != nil {
@@ -401,7 +386,6 @@ func (a *FixApp) createDatabaseSession(symbol, subscriptionType, marketDepth str
 	}
 }
 
-// Extract a single field value from a FIX message segment
 func extractSingleFieldValue(fixSegment, tagPrefix string) string {
 	start := strings.Index(fixSegment, tagPrefix)
 	if start == -1 {
@@ -411,7 +395,6 @@ func extractSingleFieldValue(fixSegment, tagPrefix string) string {
 	start += len(tagPrefix)
 	end := strings.Index(fixSegment[start:], "\x01") // FIX field delimiter
 	if end == -1 {
-		// Handle last field without delimiter
 		return fixSegment[start:]
 	}
 
@@ -419,7 +402,6 @@ func extractSingleFieldValue(fixSegment, tagPrefix string) string {
 }
 
 func (a *FixApp) sendUnsubscribeBySymbol(symbol string) {
-	// Get all subscriptions and find ones for this symbol
 	subscriptions := a.TradeStore.GetSubscriptionStatus()
 
 	var symbolSubs []*Subscription
@@ -434,7 +416,6 @@ func (a *FixApp) sendUnsubscribeBySymbol(symbol string) {
 		return
 	}
 
-	// If multiple subscriptions, show them and let user choose
 	if len(symbolSubs) > 1 {
 		fmt.Printf("Multiple active subscriptions for %s:\n", symbol)
 		for i, sub := range symbolSubs {
@@ -444,30 +425,27 @@ func (a *FixApp) sendUnsubscribeBySymbol(symbol string) {
 		fmt.Printf("Unsubscribing from all %d subscriptions for %s\n", len(symbolSubs), symbol)
 	}
 
-	// Send unsubscribe for each active subscription
 	for _, sub := range symbolSubs {
 		msg := builder.BuildMarketDataRequest(
-			sub.MDReqID, // Use existing MDReqID
-			symbol,      // Symbol
-			constants.SubscriptionRequestTypeUnsubscribe, // SubscriptionRequestType
-			"0",                                  // MarketDepth (not relevant for unsubscribe)
-			a.SenderCompId,                       // SenderCompId
-			a.TargetCompId,                       // TargetCompId
-			[]string{constants.MdEntryTypeTrade}, // MDEntryTypes (not relevant for unsubscribe)
+			sub.MDReqID,
+			symbol,
+			constants.SubscriptionRequestTypeUnsubscribe,
+			"0",
+			a.Config.SenderCompId,
+			a.Config.TargetCompId,
+			[]string{constants.MdEntryTypeTrade},
 		)
 
 		if err := quickfix.Send(msg); err != nil {
 			log.Printf("Error sending unsubscribe request for reqID %s: %v", sub.MDReqID, err)
 		} else {
 			fmt.Printf("Unsubscribe request sent for %s (reqID: %s)\n", symbol, sub.MDReqID)
-			// Remove the specific subscription by reqID
 			a.TradeStore.RemoveSubscriptionByReqID(sub.MDReqID)
 		}
 	}
 }
 
 func (a *FixApp) sendUnsubscribeByReqID(reqID string) {
-	// Get all subscriptions and find the specific one
 	subscriptions := a.TradeStore.GetSubscriptionStatus()
 
 	sub, exists := subscriptions[reqID]
@@ -476,15 +454,14 @@ func (a *FixApp) sendUnsubscribeByReqID(reqID string) {
 		return
 	}
 
-	// Send unsubscribe for the specific subscription
 	msg := builder.BuildMarketDataRequest(
-		reqID,      // Use the specific reqID
-		sub.Symbol, // Symbol from subscription
-		constants.SubscriptionRequestTypeUnsubscribe, // SubscriptionRequestType
-		"0",                                  // MarketDepth (not relevant for unsubscribe)
-		a.SenderCompId,                       // SenderCompId
-		a.TargetCompId,                       // TargetCompId
-		[]string{constants.MdEntryTypeTrade}, // MDEntryTypes (not relevant for unsubscribe)
+		reqID,
+		sub.Symbol,
+		constants.SubscriptionRequestTypeUnsubscribe,
+		"0",
+		a.Config.SenderCompId,
+		a.Config.TargetCompId,
+		[]string{constants.MdEntryTypeTrade},
 	)
 
 	if err := quickfix.Send(msg); err != nil {
@@ -492,41 +469,37 @@ func (a *FixApp) sendUnsubscribeByReqID(reqID string) {
 		fmt.Printf("Failed to send unsubscribe request for reqID: %s\n", reqID)
 	} else {
 		fmt.Printf("Unsubscribe request sent for %s (reqID: %s)\n", sub.Symbol, reqID)
-		// Remove the specific subscription by reqID
 		a.TradeStore.RemoveSubscriptionByReqID(reqID)
 	}
 }
 
 func (a *FixApp) sendMarketDataRequest(symbol, subscriptionType, description string) {
-	// Use the new function with default parameters for backward compatibility
 	a.sendMarketDataRequestWithOptions(symbol, subscriptionType, "0", []string{constants.MdEntryTypeTrade}, description)
 }
 
 func (a *FixApp) sendMarketDataRequestWithOptions(symbol, subscriptionType, marketDepth string, entryTypes []string, description string) {
 	reqID := fmt.Sprintf("md_%d", time.Now().UnixNano())
 
-	// Only track actual subscriptions (not snapshots) in the subscription tracker
 	if subscriptionType == constants.SubscriptionRequestTypeSubscribe {
 		a.TradeStore.AddSubscription(symbol, subscriptionType, reqID)
 	}
 
-	// Create session record in database (track all requests for historical analysis)
 	a.createDatabaseSession(symbol, subscriptionType, marketDepth, entryTypes, reqID)
 
 	msg := builder.BuildMarketDataRequest(
-		reqID,            // MDReqID (unique timestamp-based)
-		symbol,           // Symbol
-		subscriptionType, // SubscriptionRequestType
-		marketDepth,      // MarketDepth
-		a.SenderCompId,   // SenderCompId
-		a.TargetCompId,   // TargetCompId
-		entryTypes,       // MDEntryTypes
+		reqID,
+		symbol,
+		subscriptionType,
+		marketDepth,
+		a.Config.SenderCompId,
+		a.Config.TargetCompId,
+		entryTypes,
 	)
 
 	if err := quickfix.Send(msg); err != nil {
 		log.Printf("Error sending market data request: %v", err)
 		fmt.Printf("Failed to send %s request for %s\n", description, symbol)
-		a.TradeStore.RemoveSubscription(symbol) // Remove failed subscription
+		a.TradeStore.RemoveSubscription(symbol)
 	} else {
 		entryTypesStr := ""
 		for i, et := range entryTypes {

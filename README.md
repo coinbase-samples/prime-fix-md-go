@@ -50,12 +50,19 @@ LogonTimeout=5
 Set the following environment variables with your Coinbase Prime credentials:
 
 ```bash
-export ACCESS_KEY="your-access-key"
-export SIGNING_KEY="your-signing-key" 
-export PASSPHRASE="your-passphrase"
-export SVC_ACCOUNT_ID="your-service-account-id"
-export TARGET_COMP_ID="COIN"
-export PORTFOLIO_ID="your-portfolio-id"
+export PRIME_ACCESS_KEY="your-access-key"
+export PRIME_SIGNING_KEY="your-signing-key" 
+export PRIME_PASSPHRASE="your-passphrase"
+export PRIME_SVC_ACCOUNT_ID="your-service-account-id"
+export PRIME_TARGET_COMP_ID="COIN"
+export PRIME_PORTFOLIO_ID="your-portfolio-id"
+```
+
+Alternatively, copy `.env.example` to `.env` and fill in your credentials:
+
+```bash
+cp .env.example .env
+# Edit .env with your actual credentials
 ```
 
 ## Usage

@@ -49,15 +49,16 @@ func main() {
 		}
 	}(db)
 
-	app := fixclient.NewFixApp(
+	config := fixclient.NewConfig(
 		os.Getenv("PRIME_ACCESS_KEY"),
 		os.Getenv("PRIME_SIGNING_KEY"),
 		os.Getenv("PRIME_PASSPHRASE"),
 		os.Getenv("PRIME_SVC_ACCOUNT_ID"),
 		os.Getenv("PRIME_TARGET_COMP_ID"),
 		os.Getenv("PRIME_PORTFOLIO_ID"),
-		db,
 	)
+
+	app := fixclient.NewFixApp(config, db)
 
 	initiator, err := quickfix.NewInitiator(app,
 		quickfix.NewMemoryStoreFactory(),
