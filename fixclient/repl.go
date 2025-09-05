@@ -32,12 +32,12 @@ func Repl(app *FixApp) {
 	completer := readline.NewPrefixCompleter(
 		readline.PcItem("md",
 			readline.PcItem("BTC-USD",
-				readline.PcItem("--snapshot", readline.PcItem("--trades"), readline.PcItem("--bids"), readline.PcItem("--offers")),
-				readline.PcItem("--subscribe", readline.PcItem("--trades"), readline.PcItem("--bids"), readline.PcItem("--offers")),
+				readline.PcItem("--snapshot", readline.PcItem("--trades"), readline.PcItem("--depth")),
+				readline.PcItem("--subscribe", readline.PcItem("--trades"), readline.PcItem("--depth")),
 			),
 			readline.PcItem("ETH-USD",
-				readline.PcItem("--snapshot", readline.PcItem("--trades"), readline.PcItem("--bids"), readline.PcItem("--offers")),
-				readline.PcItem("--subscribe", readline.PcItem("--trades"), readline.PcItem("--bids"), readline.PcItem("--offers")),
+				readline.PcItem("--snapshot", readline.PcItem("--trades"), readline.PcItem("--depth")),
+				readline.PcItem("--subscribe", readline.PcItem("--trades"), readline.PcItem("--depth")),
 			),
 		),
 		readline.PcItem("unsubscribe", readline.PcItem("BTC-USD"), readline.PcItem("ETH-USD")),
@@ -108,22 +108,21 @@ Subscription Flags:
 
 Depth Flag:
   --depth N               - Market depth (0=full, 1=top, N=best N levels)
+                            Automatically includes both bids and offers
 
 Entry Type Flags:
-  --bids                  - Bid prices
-  --offers                - Offer/ask prices
   --trades                - Executed trades
-  --open                  - Opening price
-  --close                 - Closing price
-  --high                  - High price
-  --low                   - Low price
-  --volume                - Trading volume
+  --o                     - Opening price
+  --c                     - Closing price
+  --h                     - High price
+  --l                     - Low price
+  --v                     - Trading volume
 
 Examples:
   md BTC-USD --snapshot --trades
-  md BTC-USD --snapshot --depth 1 --bids --offers
-  md BTC-USD --subscribe --depth 10 --bids --offers
-  md ETH-USD --snapshot --open --close --high --low
+  md BTC-USD --snapshot --depth 1
+  md BTC-USD --subscribe --depth 10
+  md ETH-USD --snapshot --o --c --h --l --v
   md BTC-USD --unsubscribe
 `)
 		return
@@ -149,9 +148,15 @@ Examples:
 		flags.marketDepth = "0"
 	}
 
-	// Default to trades if no entry types specified
+	// Default entry types based on context
 	if len(flags.entryTypes) == 0 {
-		flags.entryTypes = []string{constants.MdEntryTypeTrade}
+		// If depth is specified, default to bids and offers (order book data)
+		if flags.marketDepth != "" && flags.marketDepth != "0" {
+			flags.entryTypes = []string{constants.MdEntryTypeBid, constants.MdEntryTypeOffer}
+		} else {
+			// Otherwise default to trades
+			flags.entryTypes = []string{constants.MdEntryTypeTrade}
+		}
 	}
 
 	// Determine description
@@ -187,22 +192,17 @@ func (a *FixApp) parseMDFlags(args []string) MDRequestFlags {
 				flags.marketDepth = args[i]
 			}
 
-		// Entry type flags
-		case "--bids":
-			flags.entryTypes = append(flags.entryTypes, constants.MdEntryTypeBid)
-		case "--offers":
-			flags.entryTypes = append(flags.entryTypes, constants.MdEntryTypeOffer)
 		case "--trades":
 			flags.entryTypes = append(flags.entryTypes, constants.MdEntryTypeTrade)
-		case "--open":
+		case "--o":
 			flags.entryTypes = append(flags.entryTypes, constants.MdEntryTypeOpen)
-		case "--close":
+		case "--c":
 			flags.entryTypes = append(flags.entryTypes, constants.MdEntryTypeClose)
-		case "--high":
+		case "--h":
 			flags.entryTypes = append(flags.entryTypes, constants.MdEntryTypeHigh)
-		case "--low":
+		case "--l":
 			flags.entryTypes = append(flags.entryTypes, constants.MdEntryTypeLow)
-		case "--volume":
+		case "--v":
 			flags.entryTypes = append(flags.entryTypes, constants.MdEntryTypeVolume)
 		}
 	}

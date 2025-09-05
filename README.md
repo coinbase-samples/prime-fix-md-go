@@ -4,7 +4,7 @@ A Go-based FIX protocol client for receiving real-time and snapshot market data 
 
 ## Features
 
-- **Real-time Market Data**: Subscribe to live trades, order book updates, and OHLCV candles
+- **Real-time Market Data**: Subscribe to live trades, order book updates, and OHLCV data
 - **Snapshot Data**: Get point-in-time snapshots of trades, order books, and OHLCV data  
 - **SQLite Storage**: All market data is stored in a local SQLite database for analysis
 - **CLI Interface**: Interactive command-line interface with tab completion
@@ -62,6 +62,10 @@ export PORTFOLIO_ID="your-portfolio-id"
 
 Run the application:
 ```bash
+# Option 1: Run directly (no build needed)
+go run cmd/main.go
+
+# Option 2: Run compiled binary
 ./fix-md-client
 ```
 
@@ -78,17 +82,18 @@ md <symbol> [flags...]
 - `--unsubscribe` - Stop real-time updates
 
 **Depth Control (for order books):**
-- `--depth N` - Number of price levels (0=full, 1=top, N=best N levels)
+- `--depth 0` - Full order book (all available price levels)
+- `--depth 1` - Top of book L1 (best bid + best offer only)  
+- `--depth N` - LN book (best N bids + best N offers, e.g., L5, L10, L25)
+                Automatically includes both bids and offers
 
 **Data Types:**
 - `--trades` - Trade executions
-- `--bids` - Bid prices
-- `--offers` - Ask/offer prices  
-- `--open` - Opening price
-- `--close` - Closing price
-- `--high` - High price
-- `--low` - Low price
-- `--volume` - Trading volume
+- `--o` - Opening price
+- `--c` - Closing price
+- `--h` - High price
+- `--l` - Low price
+- `--v` - Trading volume
 
 #### Unsubscribe Commands
 ```bash
@@ -114,23 +119,26 @@ unsubscribe <symbol|reqID>
 # Trade snapshot (100 most recent trades)
 md BTC-USD --snapshot --trades
 
-# Level 1 order book snapshot  
-md BTC-USD --snapshot --depth 1 --bids --offers
+# Full order book snapshot (all available levels)
+md BTC-USD --snapshot --depth 0
 
-# Level 10 order book snapshot
-md BTC-USD --snapshot --depth 10 --bids --offers
+# First level order book snapshot (best bid + best offer)
+md BTC-USD --snapshot --depth 1
+
+# First 10 levels order book snapshot (best 10 bids + 10 offers)
+md BTC-USD --snapshot --depth 10
 
 # Subscribe to live trades
 md BTC-USD --subscribe --trades
 
-# Subscribe to live Level 5 order book
-md BTC-USD --subscribe --depth 5 --bids --offers
+# Subscribe to live Level 5 order book (5 bids + 5 offers)
+md BTC-USD --subscribe --depth 5
 
 # OHLCV snapshot
-md ETH-USD --snapshot --open --close --high --low --volume
+md ETH-USD --snapshot --o --c --h --l --v
 
-# Subscribe to live candle updates
-md BTC-USD --subscribe --open --close --high --low --volume
+# Subscribe to live candle updates (allow 30s for connection to establish)
+md BTC-USD --subscribe --o --c --h --l --v
 
 # Unsubscribe examples
 unsubscribe BTC-USD                    # Cancel ALL BTC-USD subscriptions
@@ -148,8 +156,7 @@ status
 You can have multiple active subscriptions per symbol. For example:
 ```bash
 md BTC-USD --subscribe --trades              # Live trades (reqID: md_123)
-md BTC-USD --subscribe --depth 5 --bids     # Live L5 bids (reqID: md_456)  
-md BTC-USD --subscribe --depth 5 --offers   # Live L5 offers (reqID: md_789)
+md BTC-USD --subscribe --depth 5             # Live L5 bids+offers (5 bids + 5 offers, reqID: md_456)
 ```
 
 ### Subscription Tracking
@@ -169,9 +176,9 @@ Active Subscriptions:
 ┌─────────────┬──────────────────┬─────────────┬─────────────┬──────────────┬──────────────────┐
 │ Symbol      │ Type             │ Status      │ Updates     │ Last Update  │ ReqID            │
 ├─────────────┼──────────────────┼─────────────┼─────────────┼──────────────┼──────────────────┤
-│ BTC-USD     │ Snapshot + Updates │ Active     │ 150         │ 14:23:45     │ ...4111000       │
-│             │ Snapshot + Updates │ Active     │ 89          │ 14:23:45     │ ...4222000       │
-│ ETH-USD     │ Snapshot + Updates │ Active     │ 45          │ 14:22:10     │ ...4333000       │
+│ BTC-USD     │ Snapshot + Updates │ Active    │ 150         │ 14:23:45     │ ...4111000       │
+│             │ Snapshot + Updates │ Active    │ 89          │ 14:23:45     │ ...4222000       │
+│ ETH-USD     │ Snapshot + Updates │ Active    │ 45          │ 14:22:10     │ ...4333000       │
 └─────────────┴──────────────────┴─────────────┴─────────────┴──────────────┴──────────────────┘
 ```
 
@@ -187,73 +194,30 @@ Active Subscriptions:
 - **Order Book (bids/offers)**: Supports real-time streaming
 - **OHLCV**: Supports real-time candle updates
 
-## Database Schema
+## Understanding Market Data
 
-Market data is automatically stored in `marketdata.db` with the following structure:
+### Order Book Depth Subscriptions
+When you subscribe to order book depth (e.g., `--depth 3`), you'll receive incremental updates as market conditions change:
 
-### Tables
+- **Depth 3** means "up to 3 best price levels" on each side
+- You may not always see exactly 3 bids and 3 offers due to:
+  - Price levels being removed when size reaches zero
+  - New price levels appearing within the top N levels
+  - Market gaps where fewer than N levels exist
+- Updates show real-time changes: new levels, size changes, level removals
+- Track position numbers to understand level ranking (1=best, 2=second best, etc.)
 
-**sessions** - Request metadata
-- `session_id` - Unique session identifier
-- `symbol` - Trading pair (e.g., BTC-USD)
-- `request_type` - "snapshot" or "subscribe"
-- `data_types` - "trades", "bids,offers", or "ohlcv"  
-- `depth` - Order book depth (NULL for trades/ohlcv)
-- `md_req_id` - FIX request ID
-- `created_at` - Session creation time
-- `is_active` - Session status
+### Snapshot vs Live Data
+- **Snapshots** (`--snapshot`) - One-time current state, not tracked
+- **Subscriptions** (`--subscribe`) - Continuous live updates, tracked in `status`
 
-**trades** - Trade executions
-- `symbol` - Trading pair
-- `price` - Trade price
-- `size` - Trade size
-- `aggressor_side` - "Buy" or "Sell"
-- `trade_time` - Exchange timestamp
-- `seq_num` - FIX sequence number
-- `is_snapshot` - TRUE if from snapshot, FALSE if streaming
-- `received_at` - Local receive time
+## Data Storage
 
-**order_book** - Bid/offer levels
-- `symbol` - Trading pair
-- `side` - "bid" or "offer"
-- `price` - Price level
-- `size` - Size at price level
-- `position` - Book position (1=best, 2=second best, etc.)
-- `seq_num` - FIX sequence number
-- `is_snapshot` - TRUE if from snapshot, FALSE if streaming
-- `received_at` - Local receive time
-
-**ohlcv** - Candle data
-- `symbol` - Trading pair
-- `data_type` - "open", "high", "low", "close", or "volume"
-- `value` - Data value
-- `entry_time` - Exchange timestamp
-- `seq_num` - FIX sequence number
-- `received_at` - Local receive time
-
-### Example Queries
-
-```sql
--- Recent trades for BTC-USD
-SELECT price, size, aggressor_side, received_at 
-FROM trades 
-WHERE symbol = 'BTC-USD' 
-ORDER BY received_at DESC 
-LIMIT 10;
-
--- Current order book snapshot
-SELECT side, price, size, position 
-FROM order_book 
-WHERE symbol = 'BTC-USD' AND is_snapshot = 1 
-ORDER BY side, position;
-
--- Latest OHLCV data
-SELECT data_type, value, entry_time 
-FROM ohlcv 
-WHERE symbol = 'BTC-USD' 
-ORDER BY received_at DESC 
-LIMIT 5;
-```
+Market data is stored in `marketdata.db` (SQLite) with tables for:
+- **trades** - Trade executions with price, size, and timestamps
+- **order_book** - Bid/offer levels with position and depth
+- **ohlcv** - Open, high, low, close, and volume data
+- **sessions** - Request metadata and subscription tracking
 
 ## Output Format
 
@@ -273,38 +237,3 @@ BTC-USD Bid: 49995.00 | Size: 1.5 | Pos: 1
 BTC-USD Offer: 50005.00 | Size: 2.0 | Pos: 1
 ────────────────────────────────────────────────
 ```
-
-## File Structure
-
-```
-prime-fix-md-go/
-├── cmd/main.go              # Application entry point
-├── fixclient/               # FIX protocol client
-│   ├── fixapp.go           # Main FIX application logic
-│   └── tradestore.go       # In-memory trade storage
-├── database/               # Database layer
-│   └── marketdata.go       # SQLite operations
-├── builder/                # FIX message builders
-│   └── messages.go         # Market data request messages
-├── constants/              # FIX protocol constants
-│   └── constants.go        # Message types and field tags
-├── formatter/              # Logging and display
-│   └── logfactory.go       # FIX message logging
-├── utils/                  # Utilities
-│   ├── utils.go           # Helper functions
-│   └── version.go         # Version information
-├── fix.cfg                 # FIX session configuration
-├── marketdata.db          # SQLite database (created at runtime)
-├── go.mod                 # Go module dependencies
-└── README.md              # This file
-```
-
-## Dependencies
-
-- `github.com/quickfixgo/quickfix` - FIX protocol implementation
-- `github.com/mattn/go-sqlite3` - SQLite database driver
-- `github.com/chzyer/readline` - Interactive CLI with completion
-
-## License
-
-Licensed under the Apache License, Version 2.0.
