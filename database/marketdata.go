@@ -55,7 +55,7 @@ func (mdb *MarketDataDB) initSchema() error {
 		session_id TEXT PRIMARY KEY,
 		symbol TEXT NOT NULL,
 		request_type TEXT NOT NULL, -- 'snapshot' or 'subscribe'  
-		data_types TEXT NOT NULL,   -- 'trades', 'bids,offers', 'ohlcv'
+		data_types TEXT NOT NULL,   -- 'trades', 'order_book', 'ohlcv'
 		depth INTEGER,              -- NULL for trades/ohlcv, number for order book
 		md_req_id TEXT NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

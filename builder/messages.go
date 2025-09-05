@@ -25,20 +25,28 @@ import (
 	"github.com/quickfixgo/quickfix"
 )
 
+type FieldSetter interface {
+	SetField(tag quickfix.Tag, field quickfix.FieldValueWriter) *quickfix.FieldMap
+}
+
+func setString(fs FieldSetter, tag quickfix.Tag, value string) {
+	fs.SetField(tag, quickfix.FIXString(value))
+}
+
 func BuildLogon(
 	body *quickfix.Body,
 	ts, apiKey, apiSecret, passphrase, targetCompId, portfolioId string,
 ) {
 	sig := utils.Sign(ts, constants.MsgTypeLogon, constants.MsgSeqNumInit, apiKey, targetCompId, passphrase, apiSecret)
 
-	body.SetField(constants.TagEncryptMethod, quickfix.FIXString(constants.EncryptMethodNone))
-	body.SetField(constants.TagHeartBtInt, quickfix.FIXString(constants.HeartBtInterval))
+	setString(body, constants.TagEncryptMethod, constants.EncryptMethodNone)
+	setString(body, constants.TagHeartBtInt, constants.HeartBtInterval)
 
-	body.SetField(constants.TagPassword, quickfix.FIXString(passphrase))
-	body.SetField(constants.TagAccount, quickfix.FIXString(portfolioId))
-	body.SetField(constants.TagHmac, quickfix.FIXString(sig))
-	body.SetField(constants.TagUsername, quickfix.FIXString(apiKey))
-	body.SetField(constants.TagDropCopyFlag, quickfix.FIXString(constants.DropCopyFlagYes))
+	setString(body, constants.TagPassword, passphrase)
+	setString(body, constants.TagAccount, portfolioId)
+	setString(body, constants.TagHmac, sig)
+	setString(body, constants.TagUsername, apiKey)
+	setString(body, constants.TagDropCopyFlag, constants.DropCopyFlagYes)
 }
 
 func BuildMarketDataRequest(
@@ -46,18 +54,18 @@ func BuildMarketDataRequest(
 	mdEntryTypes []string,
 ) *quickfix.Message {
 	m := quickfix.NewMessage()
-	m.Header.SetField(constants.TagBeginString, quickfix.FIXString(constants.FixBeginString))
-	m.Header.SetField(constants.TagMsgType, quickfix.FIXString(constants.MsgTypeMarketDataRequest))
-	m.Header.SetField(constants.TagSenderCompId, quickfix.FIXString(senderCompId))
-	m.Header.SetField(constants.TagTargetCompId, quickfix.FIXString(targetCompId))
-	m.Header.SetField(constants.TagSendingTime, quickfix.FIXString(time.Now().UTC().Format(constants.FixTimeFormat)))
+	setString(&m.Header, constants.TagBeginString, constants.FixBeginString)
+	setString(&m.Header, constants.TagMsgType, constants.MsgTypeMarketDataRequest)
+	setString(&m.Header, constants.TagSenderCompId, senderCompId)
+	setString(&m.Header, constants.TagTargetCompId, targetCompId)
+	setString(&m.Header, constants.TagSendingTime, time.Now().UTC().Format(constants.FixTimeFormat))
 
-	m.Body.SetField(constants.TagMdReqId, quickfix.FIXString(mdReqId))
-	m.Body.SetField(constants.TagSubscriptionRequestType, quickfix.FIXString(subscriptionRequestType))
-	m.Body.SetField(constants.TagMarketDepth, quickfix.FIXString(marketDepth))
+	setString(&m.Body, constants.TagMdReqId, mdReqId)
+	setString(&m.Body, constants.TagSubscriptionRequestType, subscriptionRequestType)
+	setString(&m.Body, constants.TagMarketDepth, marketDepth)
 
 	if subscriptionRequestType == constants.SubscriptionRequestTypeSubscribe {
-		m.Body.SetField(constants.TagMdUpdateType, quickfix.FIXString(constants.MdUpdateTypeIncremental))
+		setString(&m.Body, constants.TagMdUpdateType, constants.MdUpdateTypeIncremental)
 	}
 
 	mdEntryGroup := quickfix.NewRepeatingGroup(constants.TagNoMdEntryTypes,
@@ -65,7 +73,7 @@ func BuildMarketDataRequest(
 
 	for _, entryType := range mdEntryTypes {
 		group := mdEntryGroup.Add()
-		group.SetField(constants.TagMdEntryType, quickfix.FIXString(entryType))
+		setString(group, constants.TagMdEntryType, entryType)
 	}
 	m.Body.SetGroup(mdEntryGroup)
 
@@ -73,7 +81,7 @@ func BuildMarketDataRequest(
 		quickfix.GroupTemplate{quickfix.GroupElement(constants.TagSymbol)})
 
 	symbolGroup := relatedSymGroup.Add()
-	symbolGroup.SetField(constants.TagSymbol, quickfix.FIXString(symbol))
+	setString(symbolGroup, constants.TagSymbol, symbol)
 	m.Body.SetGroup(relatedSymGroup)
 	return m
 }
