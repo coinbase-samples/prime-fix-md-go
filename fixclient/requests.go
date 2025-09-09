@@ -45,15 +45,15 @@ func (a *FixApp) sendUnsubscribeBySymbol(symbol string) {
 	if len(symbolSubs) > 1 {
 		fmt.Printf("Multiple active subscriptions for %s:\n", symbol)
 		for i, sub := range symbolSubs {
-			fmt.Printf("  %d. ReqID: %s, Type: %s, Updates: %d\n",
-				i+1, sub.MDReqID, a.getSubscriptionTypeDesc(sub.SubscriptionType), sub.TotalUpdates)
+			fmt.Printf("  %d. ReqId: %s, Type: %s, Updates: %d\n",
+				i+1, sub.MdReqId, a.getSubscriptionTypeDesc(sub.SubscriptionType), sub.TotalUpdates)
 		}
 		fmt.Printf("Unsubscribing from all %d subscriptions for %s\n", len(symbolSubs), symbol)
 	}
 
 	for _, sub := range symbolSubs {
 		msg := builder.BuildMarketDataRequest(
-			sub.MDReqID,
+			sub.MdReqId,
 			symbol,
 			constants.SubscriptionRequestTypeUnsubscribe,
 			"0",
@@ -63,25 +63,25 @@ func (a *FixApp) sendUnsubscribeBySymbol(symbol string) {
 		)
 
 		if err := quickfix.Send(msg); err != nil {
-			log.Printf("Error sending unsubscribe request for reqID %s: %v", sub.MDReqID, err)
+			log.Printf("Error sending unsubscribe request for reqId %s: %v", sub.MdReqId, err)
 		} else {
-			fmt.Printf("Unsubscribe request sent for %s (reqID: %s)\n", symbol, sub.MDReqID)
-			a.TradeStore.RemoveSubscriptionByReqID(sub.MDReqID)
+			fmt.Printf("Unsubscribe request sent for %s (reqId: %s)\n", symbol, sub.MdReqId)
+			a.TradeStore.RemoveSubscriptionByReqId(sub.MdReqId)
 		}
 	}
 }
 
-func (a *FixApp) sendUnsubscribeByReqID(reqID string) {
+func (a *FixApp) sendUnsubscribeByReqId(reqId string) {
 	subscriptions := a.TradeStore.GetSubscriptionStatus()
 
-	sub, exists := subscriptions[reqID]
+	sub, exists := subscriptions[reqId]
 	if !exists {
-		fmt.Printf("No active subscription found with reqID: %s\n", reqID)
+		fmt.Printf("No active subscription found with reqId: %s\n", reqId)
 		return
 	}
 
 	msg := builder.BuildMarketDataRequest(
-		reqID,
+		reqId,
 		sub.Symbol,
 		constants.SubscriptionRequestTypeUnsubscribe,
 		"0",
@@ -91,11 +91,11 @@ func (a *FixApp) sendUnsubscribeByReqID(reqID string) {
 	)
 
 	if err := quickfix.Send(msg); err != nil {
-		log.Printf("Error sending unsubscribe request for reqID %s: %v", reqID, err)
-		fmt.Printf("Failed to send unsubscribe request for reqID: %s\n", reqID)
+		log.Printf("Error sending unsubscribe request for reqId %s: %v", reqId, err)
+		fmt.Printf("Failed to send unsubscribe request for reqId: %s\n", reqId)
 	} else {
-		fmt.Printf("Unsubscribe request sent for %s (reqID: %s)\n", sub.Symbol, reqID)
-		a.TradeStore.RemoveSubscriptionByReqID(reqID)
+		fmt.Printf("Unsubscribe request sent for %s (reqId: %s)\n", sub.Symbol, reqId)
+		a.TradeStore.RemoveSubscriptionByReqId(reqId)
 	}
 }
 
@@ -104,16 +104,16 @@ func (a *FixApp) sendMarketDataRequest(symbol, subscriptionType, description str
 }
 
 func (a *FixApp) sendMarketDataRequestWithOptions(symbol, subscriptionType, marketDepth string, entryTypes []string, description string) {
-	reqID := fmt.Sprintf("md_%d", time.Now().UnixNano())
+	reqId := fmt.Sprintf("md_%d", time.Now().UnixNano())
 
 	if subscriptionType == constants.SubscriptionRequestTypeSubscribe {
-		a.TradeStore.AddSubscription(symbol, subscriptionType, reqID)
+		a.TradeStore.AddSubscription(symbol, subscriptionType, reqId)
 	}
 
-	a.createDatabaseSession(symbol, subscriptionType, marketDepth, entryTypes, reqID)
+	a.createDatabaseSession(symbol, subscriptionType, marketDepth, entryTypes, reqId)
 
 	msg := builder.BuildMarketDataRequest(
-		reqID,
+		reqId,
 		symbol,
 		subscriptionType,
 		marketDepth,
@@ -132,9 +132,9 @@ func (a *FixApp) sendMarketDataRequestWithOptions(symbol, subscriptionType, mark
 			if i > 0 {
 				entryTypesStr += ", "
 			}
-			entryTypesStr += getMDEntryTypeName(et)
+			entryTypesStr += getMdEntryTypeName(et)
 		}
-		fmt.Printf("%s request sent for %s (depth=%s, types=[%s], reqID=%s)\n",
-			description, symbol, marketDepth, entryTypesStr, reqID)
+		fmt.Printf("%s request sent for %s (depth=%s, types=[%s], reqId=%s)\n",
+			description, symbol, marketDepth, entryTypesStr, reqId)
 	}
 }

@@ -33,12 +33,12 @@ func (f *TableLogFactory) Create() (quickfix.Log, error) {
 	return &TableLog{}, nil
 }
 
-func (f *TableLogFactory) CreateSessionLog(sessionID quickfix.SessionID) (quickfix.Log, error) {
-	return &TableLog{SessionID: sessionID}, nil
+func (f *TableLogFactory) CreateSessionLog(sessionId quickfix.SessionID) (quickfix.Log, error) {
+	return &TableLog{SessionId: sessionId}, nil
 }
 
 type TableLog struct {
-	SessionID quickfix.SessionID
+	SessionId quickfix.SessionID
 }
 
 func (l *TableLog) OnIncoming(msg []byte) {

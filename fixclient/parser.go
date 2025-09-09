@@ -27,15 +27,15 @@ import (
 	"github.com/quickfixgo/quickfix"
 )
 
-func (a *FixApp) extractTrades(msg *quickfix.Message, symbol, mdReqID string, isSnapshot bool, seqNum string) []Trade {
-	return a.extractTradesImproved(msg, symbol, mdReqID, isSnapshot, seqNum)
+func (a *FixApp) extractTrades(msg *quickfix.Message, symbol, mdReqId string, isSnapshot bool, seqNum string) []Trade {
+	return a.extractTradesImproved(msg, symbol, mdReqId, isSnapshot, seqNum)
 }
 
-func (a *FixApp) extractTradesImproved(msg *quickfix.Message, symbol, mdReqID string, isSnapshot bool, seqNum string) []Trade {
+func (a *FixApp) extractTradesImproved(msg *quickfix.Message, symbol, mdReqId string, isSnapshot bool, seqNum string) []Trade {
 	rawMsg := msg.String()
 
-	noMDEntriesStr := utils.GetString(msg, constants.TagNoMdEntries)
-	if noMDEntriesStr == "" || noMDEntriesStr == "0" {
+	noMdEntriesStr := utils.GetString(msg, constants.TagNoMdEntries)
+	if noMdEntriesStr == "" || noMdEntriesStr == "0" {
 		return []Trade{}
 	}
 
@@ -46,7 +46,7 @@ func (a *FixApp) extractTradesImproved(msg *quickfix.Message, symbol, mdReqID st
 		endPos := a.getEntryEndPos(entryStarts, i, len(rawMsg))
 		entrySegment := rawMsg[startPos:endPos]
 
-		trade := a.parseTradeFromSegment(entrySegment, symbol, mdReqID, isSnapshot, seqNum, i)
+		trade := a.parseTradeFromSegment(entrySegment, symbol, mdReqId, isSnapshot, seqNum, i)
 		trades = append(trades, trade)
 	}
 
@@ -74,11 +74,11 @@ func (a *FixApp) getEntryEndPos(entryStarts []int, currentIndex, msgLen int) int
 	return msgLen
 }
 
-func (a *FixApp) parseTradeFromSegment(segment, symbol, mdReqID string, isSnapshot bool, seqNum string, entryIndex int) Trade {
+func (a *FixApp) parseTradeFromSegment(segment, symbol, mdReqId string, isSnapshot bool, seqNum string, entryIndex int) Trade {
 	trade := Trade{
 		Timestamp:  time.Now(),
 		Symbol:     symbol,
-		MDReqID:    mdReqID,
+		MdReqId:    mdReqId,
 		IsSnapshot: isSnapshot,
 		IsUpdate:   !isSnapshot,
 		SeqNum:     seqNum,

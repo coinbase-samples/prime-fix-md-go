@@ -50,7 +50,12 @@ func BuildLogon(
 }
 
 func BuildMarketDataRequest(
-	mdReqId, symbol, subscriptionRequestType, marketDepth, senderCompId, targetCompId string,
+	mdReqId string,
+	symbol string,
+	subscriptionRequestType string,
+	marketDepth string,
+	senderCompId string,
+	targetCompId string,
 	mdEntryTypes []string,
 ) *quickfix.Message {
 	m := quickfix.NewMessage()
@@ -68,20 +73,22 @@ func BuildMarketDataRequest(
 		setString(&m.Body, constants.TagMdUpdateType, constants.MdUpdateTypeIncremental)
 	}
 
-	mdEntryGroup := quickfix.NewRepeatingGroup(constants.TagNoMdEntryTypes,
-		quickfix.GroupTemplate{quickfix.GroupElement(constants.TagMdEntryType)})
+	mdEntryGroup := quickfix.NewRepeatingGroup(
+		constants.TagNoMdEntryTypes,
+		quickfix.GroupTemplate{quickfix.GroupElement(constants.TagMdEntryType)},
+	)
 
 	for _, entryType := range mdEntryTypes {
-		group := mdEntryGroup.Add()
-		setString(group, constants.TagMdEntryType, entryType)
+		setString(mdEntryGroup.Add(), constants.TagMdEntryType, entryType)
 	}
 	m.Body.SetGroup(mdEntryGroup)
 
-	relatedSymGroup := quickfix.NewRepeatingGroup(constants.TagNoRelatedSym,
-		quickfix.GroupTemplate{quickfix.GroupElement(constants.TagSymbol)})
+	relatedSymGroup := quickfix.NewRepeatingGroup(
+		constants.TagNoRelatedSym,
+		quickfix.GroupTemplate{quickfix.GroupElement(constants.TagSymbol)},
+	)
 
-	symbolGroup := relatedSymGroup.Add()
-	setString(symbolGroup, constants.TagSymbol, symbol)
+	setString(relatedSymGroup.Add(), constants.TagSymbol, symbol)
 	m.Body.SetGroup(relatedSymGroup)
 	return m
 }

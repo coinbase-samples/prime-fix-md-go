@@ -74,7 +74,7 @@ func Repl(app *FixApp) {
 		cmd := strings.ToLower(parts[0])
 		switch cmd {
 		case "md":
-			app.handleDirectMDRequest(parts)
+			app.handleDirectMdRequest(parts)
 		case "unsubscribe":
 			app.handleUnsubscribeRequest(parts)
 		case "status":
@@ -91,13 +91,13 @@ func Repl(app *FixApp) {
 	}
 }
 
-type MDRequestFlags struct {
+type MdRequestFlags struct {
 	subscriptionType string
 	marketDepth      string
 	entryTypes       []string
 }
 
-func (a *FixApp) handleDirectMDRequest(parts []string) {
+func (a *FixApp) handleDirectMdRequest(parts []string) {
 	if len(parts) < 2 {
 		fmt.Print(`Usage: md <symbol> [flags...]
 
@@ -129,7 +129,7 @@ Examples:
 	}
 
 	symbol := strings.ToUpper(parts[1])
-	flags := a.parseMDFlags(parts[2:])
+	flags := a.parseMdFlags(parts[2:])
 
 	// Validate we have a subscription type
 	if flags.subscriptionType == "" {
@@ -168,8 +168,8 @@ Examples:
 	a.sendMarketDataRequestWithOptions(symbol, flags.subscriptionType, flags.marketDepth, flags.entryTypes, description)
 }
 
-func (a *FixApp) parseMDFlags(args []string) MDRequestFlags {
-	flags := MDRequestFlags{
+func (a *FixApp) parseMdFlags(args []string) MdRequestFlags {
+	flags := MdRequestFlags{
 		entryTypes: []string{},
 	}
 
@@ -212,26 +212,26 @@ func (a *FixApp) parseMDFlags(args []string) MDRequestFlags {
 
 func (a *FixApp) handleUnsubscribeRequest(parts []string) {
 	if len(parts) < 2 {
-		fmt.Print(`Usage: unsubscribe <symbol|reqID>
+		fmt.Print(`Usage: unsubscribe <symbol|reqId>
 Examples: 
   unsubscribe BTC-USD           - Cancel ALL BTC-USD subscriptions
-  unsubscribe md_1234567890     - Cancel specific subscription by reqID
+  unsubscribe md_1234567890     - Cancel specific subscription by reqId
   unsubscribe --reqid md_123    - Cancel specific subscription (explicit)
 `)
 		return
 	}
 
-	// Handle --reqid flag for explicit reqID targeting
+	// Handle --reqid flag for explicit reqId targeting
 	if len(parts) >= 3 && parts[1] == "--reqid" {
-		a.sendUnsubscribeByReqID(parts[2])
+		a.sendUnsubscribeByReqId(parts[2])
 		return
 	}
 
 	input := parts[1]
 
-	// Auto-detect: if input looks like reqID, treat as reqID; otherwise as symbol
+	// Auto-detect: if input looks like reqId, treat as reqId; otherwise as symbol
 	if strings.HasPrefix(input, "md_") {
-		a.sendUnsubscribeByReqID(input)
+		a.sendUnsubscribeByReqId(input)
 	} else {
 		symbol := strings.ToUpper(input)
 		a.sendUnsubscribeBySymbol(symbol)
@@ -255,7 +255,7 @@ func (a *FixApp) handleStatusRequest() {
 	fmt.Print(`
 Active Subscriptions:
 ┌─────────────┬──────────────────┬─────────────┬─────────────┬──────────────┬──────────────────┐
-│ Symbol      │ Type             │ Status      │ Updates     │ Last Update  │ ReqID            │
+│ Symbol      │ Type             │ Status      │ Updates     │ Last Update  │ ReqId            │
 ├─────────────┼──────────────────┼─────────────┼─────────────┼──────────────┼──────────────────┤
 `)
 
@@ -277,14 +277,14 @@ Active Subscriptions:
 				displaySymbol = ""
 			}
 
-			// Truncate reqID for display
-			shortReqID := sub.MDReqID
-			if len(shortReqID) > 16 {
-				shortReqID = "..." + shortReqID[len(shortReqID)-13:]
+			// Truncate reqId for display
+			shortReqId := sub.MdReqId
+			if len(shortReqId) > 16 {
+				shortReqId = "..." + shortReqId[len(shortReqId)-13:]
 			}
 
 			fmt.Printf("│ %-11s │ %-16s │ %-11s │ %-11d │ %-12s │ %-16s │\n",
-				displaySymbol, a.getSubscriptionTypeDesc(sub.SubscriptionType), status, sub.TotalUpdates, lastUpdate, shortReqID)
+				displaySymbol, a.getSubscriptionTypeDesc(sub.SubscriptionType), status, sub.TotalUpdates, lastUpdate, shortReqId)
 		}
 	}
 

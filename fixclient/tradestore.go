@@ -29,10 +29,10 @@ type Trade struct {
 	Size       string    `json:"size"`
 	Time       string    `json:"time"`
 	Aggressor  string    `json:"aggressor"`
-	MDReqID    string    `json:"mdReqId"`
+	MdReqId    string    `json:"mdReqId"`
 	IsSnapshot bool      `json:"isSnapshot"`
 	IsUpdate   bool      `json:"isUpdate"`
-	EntryType  string    `json:"entryType"` // MDEntryType (0=Bid, 1=Offer, 2=Trade, 4=Open, 5=Close, 7=High, 8=Low, B=Volume)
+	EntryType  string    `json:"entryType"` // MdEntryType (0=Bid, 1=Offer, 2=Trade, 4=Open, 5=Close, 7=High, 8=Low, B=Volume)
 	Position   string    `json:"position"`  // Position in book (for bids/offers)
 	SeqNum     string    `json:"seqNum"`    // FIX MsgSeqNum for ordering
 }
@@ -40,7 +40,7 @@ type Trade struct {
 type TradeStore struct {
 	mu            sync.RWMutex
 	trades        []Trade
-	subscriptions map[string]*Subscription // reqID -> subscription info
+	subscriptions map[string]*Subscription // reqId -> subscription info
 	updateCount   int64
 	maxSize       int
 }
@@ -48,7 +48,7 @@ type TradeStore struct {
 type Subscription struct {
 	Symbol           string
 	SubscriptionType string // "0"=snapshot, "1"=subscribe, "2"=unsubscribe
-	MDReqID          string
+	MdReqId          string
 	Active           bool
 	LastUpdate       time.Time
 	TotalUpdates     int64
@@ -63,11 +63,11 @@ func NewTradeStore(maxSize int, persistenceFile string) *TradeStore {
 	}
 }
 
-func (ts *TradeStore) AddTrades(symbol string, trades []Trade, isSnapshot bool, mdReqID string) {
+func (ts *TradeStore) AddTrades(symbol string, trades []Trade, isSnapshot bool, mdReqId string) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
-	if sub, exists := ts.subscriptions[mdReqID]; exists {
+	if sub, exists := ts.subscriptions[mdReqId]; exists {
 		sub.LastUpdate = time.Now()
 		sub.TotalUpdates += int64(len(trades))
 		if isSnapshot {
@@ -78,7 +78,7 @@ func (ts *TradeStore) AddTrades(symbol string, trades []Trade, isSnapshot bool, 
 	for _, trade := range trades {
 		trade.Timestamp = time.Now()
 		trade.Symbol = symbol
-		trade.MDReqID = mdReqID
+		trade.MdReqId = mdReqId
 		trade.IsSnapshot = isSnapshot
 		trade.IsUpdate = !isSnapshot
 
@@ -117,21 +117,21 @@ func (ts *TradeStore) GetAllTrades() []Trade {
 	return result
 }
 
-func (ts *TradeStore) AddSubscription(symbol, subscriptionType, mdReqID string) {
+func (ts *TradeStore) AddSubscription(symbol, subscriptionType, mdReqId string) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
-	ts.subscriptions[mdReqID] = &Subscription{
+	ts.subscriptions[mdReqId] = &Subscription{
 		Symbol:           symbol,
 		SubscriptionType: subscriptionType,
-		MDReqID:          mdReqID,
+		MdReqId:          mdReqId,
 		Active:           true,
 		LastUpdate:       time.Now(),
 		TotalUpdates:     0,
 		SnapshotReceived: false,
 	}
 
-	log.Printf("Added subscription: %s (type=%s, reqID=%s)", symbol, getSubscriptionTypeDesc(subscriptionType), mdReqID)
+	log.Printf("Added subscription: %s (type=%s, reqId=%s)", symbol, getSubscriptionTypeDesc(subscriptionType), mdReqId)
 }
 
 func (ts *TradeStore) RemoveSubscription(symbol string) {
@@ -139,20 +139,20 @@ func (ts *TradeStore) RemoveSubscription(symbol string) {
 	defer ts.mu.Unlock()
 
 	// Find all subscriptions for this symbol and remove them
-	for reqID, sub := range ts.subscriptions {
+	for reqId, sub := range ts.subscriptions {
 		if sub.Symbol == symbol {
-			delete(ts.subscriptions, reqID)
-			log.Printf("Removed subscription: %s (reqID: %s, total updates: %d)", symbol, reqID, sub.TotalUpdates)
+			delete(ts.subscriptions, reqId)
+			log.Printf("Removed subscription: %s (reqId: %s, total updates: %d)", symbol, reqId, sub.TotalUpdates)
 		}
 	}
 }
 
-func (ts *TradeStore) RemoveSubscriptionByReqID(reqID string) {
+func (ts *TradeStore) RemoveSubscriptionByReqId(reqId string) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
-	if sub, exists := ts.subscriptions[reqID]; exists {
-		delete(ts.subscriptions, reqID)
-		log.Printf("Removed subscription: %s (ReqID: %s)", sub.Symbol, reqID)
+	if sub, exists := ts.subscriptions[reqId]; exists {
+		delete(ts.subscriptions, reqId)
+		log.Printf("Removed subscription: %s (ReqId: %s)", sub.Symbol, reqId)
 	}
 }
 
@@ -161,10 +161,10 @@ func (ts *TradeStore) GetSubscriptionStatus() map[string]*Subscription {
 	defer ts.mu.RUnlock()
 
 	result := make(map[string]*Subscription)
-	for reqID, v := range ts.subscriptions {
+	for reqId, v := range ts.subscriptions {
 		// Create copy to avoid race conditions
 		sub := *v
-		result[reqID] = &sub
+		result[reqId] = &sub
 	}
 	return result
 }

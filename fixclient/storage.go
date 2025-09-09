@@ -26,13 +26,13 @@ import (
 )
 
 func (a *FixApp) storeTradesToDatabase(trades []Trade, seqNum string, isSnapshot bool) {
-	if a.DB == nil {
+	if a.Db == nil {
 		return
 	}
 
 	seqNumInt, _ := strconv.Atoi(seqNum)
 
-	tx, err := a.DB.BeginTransaction()
+	tx, err := a.Db.BeginTransaction()
 	if err != nil {
 		log.Printf("Failed to begin database transaction: %v", err)
 		return
@@ -43,34 +43,34 @@ func (a *FixApp) storeTradesToDatabase(trades []Trade, seqNum string, isSnapshot
 		switch trade.EntryType {
 		case constants.MdEntryTypeBid: // "0"
 			posInt, _ := strconv.Atoi(trade.Position)
-			err = a.DB.StoreOrderBookBatch(tx, trade.Symbol, "bid", trade.Price, trade.Size,
-				posInt, seqNumInt, trade.MDReqID, isSnapshot)
+			err = a.Db.StoreOrderBookBatch(tx, trade.Symbol, "bid", trade.Price, trade.Size,
+				posInt, seqNumInt, trade.MdReqId, isSnapshot)
 		case constants.MdEntryTypeOffer: // "1"
 			posInt, _ := strconv.Atoi(trade.Position)
-			err = a.DB.StoreOrderBookBatch(tx, trade.Symbol, "offer", trade.Price, trade.Size,
-				posInt, seqNumInt, trade.MDReqID, isSnapshot)
+			err = a.Db.StoreOrderBookBatch(tx, trade.Symbol, "offer", trade.Price, trade.Size,
+				posInt, seqNumInt, trade.MdReqId, isSnapshot)
 		case constants.MdEntryTypeTrade: // "2"
-			err = a.DB.StoreTradeBatch(tx, trade.Symbol, trade.Price, trade.Size,
-				trade.Aggressor, trade.Time, seqNumInt, trade.MDReqID, isSnapshot)
+			err = a.Db.StoreTradeBatch(tx, trade.Symbol, trade.Price, trade.Size,
+				trade.Aggressor, trade.Time, seqNumInt, trade.MdReqId, isSnapshot)
 		case constants.MdEntryTypeOpen: // "4"
-			err = a.DB.StoreOHLCVBatch(tx, trade.Symbol, "open", trade.Price, trade.Time,
-				seqNumInt, trade.MDReqID)
+			err = a.Db.StoreOhlcvBatch(tx, trade.Symbol, "open", trade.Price, trade.Time,
+				seqNumInt, trade.MdReqId)
 		case constants.MdEntryTypeClose: // "5"
-			err = a.DB.StoreOHLCVBatch(tx, trade.Symbol, "close", trade.Price, trade.Time,
-				seqNumInt, trade.MDReqID)
+			err = a.Db.StoreOhlcvBatch(tx, trade.Symbol, "close", trade.Price, trade.Time,
+				seqNumInt, trade.MdReqId)
 		case constants.MdEntryTypeHigh: // "7"
-			err = a.DB.StoreOHLCVBatch(tx, trade.Symbol, "high", trade.Price, trade.Time,
-				seqNumInt, trade.MDReqID)
+			err = a.Db.StoreOhlcvBatch(tx, trade.Symbol, "high", trade.Price, trade.Time,
+				seqNumInt, trade.MdReqId)
 		case constants.MdEntryTypeLow: // "8"
-			err = a.DB.StoreOHLCVBatch(tx, trade.Symbol, "low", trade.Price, trade.Time,
-				seqNumInt, trade.MDReqID)
+			err = a.Db.StoreOhlcvBatch(tx, trade.Symbol, "low", trade.Price, trade.Time,
+				seqNumInt, trade.MdReqId)
 		case constants.MdEntryTypeVolume: // "B"
-			err = a.DB.StoreOHLCVBatch(tx, trade.Symbol, "volume", trade.Size, trade.Time,
-				seqNumInt, trade.MDReqID)
+			err = a.Db.StoreOhlcvBatch(tx, trade.Symbol, "volume", trade.Size, trade.Time,
+				seqNumInt, trade.MdReqId)
 		}
 
 		if err != nil {
-			log.Printf("Failed to store %s data to database: %v", getMDEntryTypeName(trade.EntryType), err)
+			log.Printf("Failed to store %s data to database: %v", getMdEntryTypeName(trade.EntryType), err)
 			return
 		}
 	}
@@ -80,8 +80,8 @@ func (a *FixApp) storeTradesToDatabase(trades []Trade, seqNum string, isSnapshot
 	}
 }
 
-func (a *FixApp) createDatabaseSession(symbol, subscriptionType, marketDepth string, entryTypes []string, reqID string) {
-	if a.DB == nil {
+func (a *FixApp) createDatabaseSession(symbol, subscriptionType, marketDepth string, entryTypes []string, reqId string) {
+	if a.Db == nil {
 		return
 	}
 
@@ -120,7 +120,7 @@ func (a *FixApp) createDatabaseSession(symbol, subscriptionType, marketDepth str
 	}
 
 	sessionId := fmt.Sprintf("%s_%s_%d", symbol, requestType, time.Now().Unix())
-	err := a.DB.CreateSession(sessionId, symbol, requestType, dataTypes, reqID, depth)
+	err := a.Db.CreateSession(sessionId, symbol, requestType, dataTypes, reqId, depth)
 	if err != nil {
 		log.Printf("Failed to create session record: %v", err)
 	}

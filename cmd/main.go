@@ -37,12 +37,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err := database.NewMarketDataDB("marketdata.db")
+	db, err := database.NewMarketDataDb("marketdata.db")
 	if err != nil {
 		log.Fatal("Database initialization failed:", err)
 	}
 
-	defer func(db *database.MarketDataDB) {
+	defer func(db *database.MarketDataDb) {
 		err := db.Close()
 		if err != nil {
 

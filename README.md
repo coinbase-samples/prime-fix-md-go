@@ -104,18 +104,18 @@ md <symbol> [flags...]
 
 #### Unsubscribe Commands
 ```bash
-unsubscribe <symbol|reqID>
+unsubscribe <symbol|reqId>
 ```
 
 **Unsubscribe Options:**
 - `unsubscribe BTC-USD` - Cancel ALL active subscriptions for BTC-USD
-- `unsubscribe md_1234567890` - Cancel specific subscription by reqID  
+- `unsubscribe md_1234567890` - Cancel specific subscription by reqId  
 - `unsubscribe --reqid md_123` - Cancel specific subscription (explicit flag)
 
-**Auto-detection**: Inputs starting with "md_" are treated as reqIDs, otherwise as symbols.
+**Auto-detection**: Inputs starting with "md_" are treated as reqIds, otherwise as symbols.
 
 #### Other Commands
-- `status` - Show active subscriptions with reqIDs (live streams only)
+- `status` - Show active subscriptions with reqIds (live streams only)
 - `help` - Display help information
 - `version` - Show version
 - `exit` - Quit application
@@ -149,7 +149,7 @@ md BTC-USD --subscribe --o --c --h --l --v
 
 # Unsubscribe examples
 unsubscribe BTC-USD                    # Cancel ALL BTC-USD subscriptions
-unsubscribe md_1757035274634111000     # Cancel specific subscription by reqID
+unsubscribe md_1757035274634111000     # Cancel specific subscription by reqId
 unsubscribe --reqid md_123456789       # Cancel specific subscription (explicit)
 md BTC-USD --unsubscribe               # Alternative: cancel ALL BTC-USD subscriptions
 
@@ -162,19 +162,19 @@ status
 ### Multiple Subscriptions
 You can have multiple active subscriptions per symbol. For example:
 ```bash
-md BTC-USD --subscribe --trades              # Live trades (reqID: md_123)
-md BTC-USD --subscribe --depth 5             # Live L5 bids+offers (5 bids + 5 offers, reqID: md_456)
+md BTC-USD --subscribe --trades              # Live trades (reqId: md_123)
+md BTC-USD --subscribe --depth 5             # Live L5 bids+offers (5 bids + 5 offers, reqId: md_456)
 ```
 
 ### Subscription Tracking
 - **Snapshots** (`--snapshot`) are not tracked (one-time requests)
 - **Subscriptions** (`--subscribe`) are tracked in the `status` display
-- Each subscription gets a unique `reqID` for precise control
+- Each subscription gets a unique `reqId` for precise control
 
 ### Unsubscribe Behavior
 - **Symbol-based**: `unsubscribe BTC-USD` cancels ALL BTC-USD subscriptions
-- **ReqID-based**: `unsubscribe md_123` cancels only that specific subscription
-- **Auto-detection**: Inputs starting with "md_" are treated as reqIDs
+- **ReqId-based**: `unsubscribe md_123` cancels only that specific subscription
+- **Auto-detection**: Inputs starting with "md_" are treated as reqIds
 
 ### Status Display
 ```bash

@@ -26,7 +26,7 @@ import (
 func (a *FixApp) displayHelp() {
 	fmt.Print(`Commands:
   md <symbol> [flags...]        - Market data request
-  unsubscribe <symbol|reqID>    - Stop subscription(s) (auto-detects symbol vs reqID)
+  unsubscribe <symbol|reqId>    - Stop subscription(s) (auto-detects symbol vs reqId)
   status                        - Show active subscriptions (live data streams only)
   help                          - Show this help message
   version, exit
@@ -34,7 +34,7 @@ func (a *FixApp) displayHelp() {
 Market Data Request Types:
   --snapshot                    - One-time data request
   --subscribe                   - Live data stream (tracked in status)
-  --unsubscribe                 - Cancel specific subscription by original reqID
+  --unsubscribe                 - Cancel specific subscription by original reqId
 
 Market Data Types:
   --depth N                     - Order book data to specified depth (bids and offers)
@@ -59,9 +59,9 @@ Examples:
 
 Unsubscribe Examples:
   unsubscribe BTC-USD                                 - Cancel ALL BTC-USD subscriptions
-  unsubscribe md_1757035274634111000                  - Cancel specific subscription by reqID
+  unsubscribe md_1757035274634111000                  - Cancel specific subscription by reqId
   unsubscribe --reqid md_1757035274634111000          - Cancel specific subscription (explicit)
-  status                                              - See active subscriptions with reqIDs
+  status                                              - See active subscriptions with reqIds
 `)
 }
 
@@ -80,7 +80,7 @@ func (a *FixApp) displaySnapshotTrades(trades []Trade, symbol string) {
 
 	// Display each type separately
 	for entryType, entries := range byType {
-		typeName := getMDEntryTypeName(entryType)
+		typeName := getMdEntryTypeName(entryType)
 		log.Printf("\n🔹 %s Entries (%d):", typeName, len(entries))
 
 		if entryType == constants.MdEntryTypeBid || entryType == constants.MdEntryTypeOffer {
@@ -171,7 +171,7 @@ func getMarketDataTypeName(msgType string) string {
 	}
 }
 
-func getMDEntryTypeName(entryType string) string {
+func getMdEntryTypeName(entryType string) string {
 	switch entryType {
 	case constants.MdEntryTypeBid:
 		return "Bid"
@@ -203,4 +203,35 @@ func getAggressorSideDesc(side string) string {
 	default:
 		return side
 	}
+}
+
+func (a *FixApp) displayMarketDataReject(mdReqId, rejReason, reasonDesc, text string) {
+	log.Printf("Market Data Request REJECTED")
+	log.Printf("   MdReqId: %s", mdReqId)
+	log.Printf("   Reason: %s (%s)", rejReason, reasonDesc)
+	if text != "" {
+		log.Printf("   Text: %s", text)
+	}
+}
+
+func (a *FixApp) displayMarketDataRejectHelp(rejReason string) {
+	switch rejReason {
+	case "0":
+		log.Printf("Try a different symbol format (e.g., BTCUSD vs BTC-USD)")
+	case "3":
+		log.Printf("Check if your account has market data permissions")
+	case "5":
+		log.Printf("Try MarketDepth=0 (full depth) or MarketDepth=1 (top of book)")
+	case "8":
+		log.Printf("Try different MdEntryType: 0=Bids, 1=Offers, 2=Trades")
+	}
+}
+
+func (a *FixApp) displayConnectionSuccess() {
+	fmt.Print("Connected! Market data connection established.\n\n")
+}
+
+func (a *FixApp) displayMarketDataReceived(msgType, symbol, mdReqId, noMdEntries, seqNum string) {
+	log.Printf("Market Data %s for %s (ReqId: %s, Entries: %s, Seq: %s)",
+		getMarketDataTypeName(msgType), symbol, mdReqId, noMdEntries, seqNum)
 }

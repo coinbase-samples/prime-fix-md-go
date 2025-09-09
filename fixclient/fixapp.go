@@ -17,7 +17,6 @@
 package fixclient
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -43,7 +42,7 @@ type FixApp struct {
 
 	SessionId  quickfix.SessionID
 	TradeStore *TradeStore
-	DB         *database.MarketDataDB
+	Db         *database.MarketDataDb
 }
 
 func NewConfig(apiKey, apiSecret, passphrase, senderCompId, targetCompId, portfolioId string) *Config {
@@ -57,13 +56,13 @@ func NewConfig(apiKey, apiSecret, passphrase, senderCompId, targetCompId, portfo
 	}
 }
 
-func NewFixApp(config *Config, db *database.MarketDataDB) *FixApp {
+func NewFixApp(config *Config, db *database.MarketDataDb) *FixApp {
 	tradeStore := NewTradeStore(10000, "")
 
 	return &FixApp{
 		Config:     config,
 		TradeStore: tradeStore,
-		DB:         db,
+		Db:         db,
 	}
 }
 
@@ -86,7 +85,7 @@ func (a *FixApp) ToApp(_ *quickfix.Message, _ quickfix.SessionID) error {
 func (a *FixApp) OnLogon(sid quickfix.SessionID) {
 	a.SessionId = sid
 	log.Println("✓ FIX logon", sid)
-	fmt.Print("Connected! Market data connection established.\n\n")
+	a.displayConnectionSuccess()
 	a.displayHelp()
 }
 
@@ -117,53 +116,37 @@ func (a *FixApp) FromApp(msg *quickfix.Message, _ quickfix.SessionID) quickfix.M
 }
 
 func (a *FixApp) handleMarketDataReject(msg *quickfix.Message) {
-	mdReqID := utils.GetString(msg, constants.TagMdReqId)
+	mdReqId := utils.GetString(msg, constants.TagMdReqId)
 	rejReason := utils.GetString(msg, constants.TagMdReqRejReason)
 	text := utils.GetString(msg, constants.TagText)
 
-	reasonDesc := getMDReqRejReasonDesc(rejReason)
+	reasonDesc := getMdReqRejReasonDesc(rejReason)
 
-	log.Printf("Market Data Request REJECTED")
-	log.Printf("   MDReqID: %s", mdReqID)
-	log.Printf("   Reason: %s (%s)", rejReason, reasonDesc)
-	if text != "" {
-		log.Printf("   Text: %s", text)
-	}
-
-	a.TradeStore.RemoveSubscriptionByReqID(mdReqID)
-
-	switch rejReason {
-	case "0":
-		log.Printf("Try a different symbol format (e.g., BTCUSD vs BTC-USD)")
-	case "3":
-		log.Printf("Check if your account has market data permissions")
-	case "5":
-		log.Printf("Try MarketDepth=0 (full depth) or MarketDepth=1 (top of book)")
-	case "8":
-		log.Printf("Try different MDEntryType: 0=Bids, 1=Offers, 2=Trades")
-	}
+	a.displayMarketDataReject(mdReqId, rejReason, reasonDesc, text)
+	a.TradeStore.RemoveSubscriptionByReqId(mdReqId)
+	a.displayMarketDataRejectHelp(rejReason)
 }
 
-func getMDReqRejReasonDesc(reason string) string {
+func getMdReqRejReasonDesc(reason string) string {
 	switch reason {
-	case "0":
+	case constants.MdReqRejReasonUnknownSymbol:
 		return "Unknown symbol"
-	case "1":
-		return "Duplicate MDReqID"
-	case "2":
+	case constants.MdReqRejReasonDuplicateMdReqId:
+		return "Duplicate MdReqId"
+	case constants.MdReqRejReasonInsufficientBandwidth:
 		return "Insufficient bandwidth"
-	case "3":
+	case constants.MdReqRejReasonInsufficientPermission:
 		return "Insufficient permission"
-	case "4":
+	case constants.MdReqRejReasonInvalidSubscriptionReqType:
 		return "Invalid SubscriptionRequestType"
-	case "5":
+	case constants.MdReqRejReasonInvalidMarketDepth:
 		return "Invalid MarketDepth"
-	case "6":
-		return "Unsupported MDUpdateType"
-	case "7":
+	case constants.MdReqRejReasonUnsupportedMdUpdateType:
+		return "Unsupported MdUpdateType"
+	case constants.MdReqRejReasonOther:
 		return "Other"
-	case "8":
-		return "Unsupported MDEntryType"
+	case constants.MdReqRejReasonUnsupportedMdEntryType:
+		return "Unsupported MdEntryType"
 	default:
 		return "Unknown reason"
 	}
@@ -171,20 +154,19 @@ func getMDReqRejReasonDesc(reason string) string {
 
 func (a *FixApp) handleMarketDataMessage(msg *quickfix.Message) {
 	msgType, _ := msg.Header.GetString(constants.TagMsgType)
-	mdReqID := utils.GetString(msg, constants.TagMdReqId)
+	mdReqId := utils.GetString(msg, constants.TagMdReqId)
 	symbol := utils.GetString(msg, constants.TagSymbol)
-	noMDEntries := utils.GetString(msg, constants.TagNoMdEntries)
+	noMdEntries := utils.GetString(msg, constants.TagNoMdEntries)
 	seqNum, _ := msg.Header.GetString(constants.TagMsgSeqNum)
 
 	isSnapshot := msgType == constants.MsgTypeMarketDataSnapshot
 	isIncremental := msgType == constants.MsgTypeMarketDataIncremental
 
-	log.Printf("Market Data %s for %s (ReqID: %s, Entries: %s, Seq: %s)",
-		getMarketDataTypeName(msgType), symbol, mdReqID, noMDEntries, seqNum)
+	a.displayMarketDataReceived(msgType, symbol, mdReqId, noMdEntries, seqNum)
 
-	trades := a.extractTrades(msg, symbol, mdReqID, isSnapshot, seqNum)
+	trades := a.extractTrades(msg, symbol, mdReqId, isSnapshot, seqNum)
 
-	a.TradeStore.AddTrades(symbol, trades, isSnapshot, mdReqID)
+	a.TradeStore.AddTrades(symbol, trades, isSnapshot, mdReqId)
 
 	a.storeTradesToDatabase(trades, seqNum, isSnapshot)
 
