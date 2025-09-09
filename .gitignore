@@ -1,0 +1,24 @@
+# Environment files
+.env
+.env*
+
+# Build output
+build/
+fix-md-client
+
+# Test coverage reports
+coverage.out
+coverage.html
+
+# IDE files
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
