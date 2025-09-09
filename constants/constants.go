@@ -82,7 +82,7 @@ const (
 	TagNoMdEntries       = quickfix.Tag(268)
 	TagMdEntryPositionNo = quickfix.Tag(290)
 	TagAggressorSide     = quickfix.Tag(2446)
-	l
+
 	// MD Rejection Reasons
 	MdReqRejReasonUnknownSymbol              = "0"
 	MdReqRejReasonDuplicateMdReqId           = "1"
