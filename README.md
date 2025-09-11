@@ -30,19 +30,28 @@ A Go-based FIX protocol client for receiving real-time and snapshot market data 
 
 ## Configuration
 
-Create a `fix.cfg` file in the project root with your FIX session configuration. Example:
+Create a `fix.cfg` file in the project root with your FIX session configuration. Use `fix.cfg.example` as a template:
+
+```bash
+cp fix.cfg.example fix.cfg
+# Edit fix.cfg with your service account ID
+```
+
+### TLS Setup (Optional)
+
+Coinbase Prime FIX supports native TLS, so no stunnel or proxy is required.
+
+To generate a local CA certificate bundle from your system trust store, run:
+
+```bash
+security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain > ~/system-roots.pem
+```
+
+Then edit your `fix.cfg` file to replace `YOUR_SSL_CA_FILE_PATH` with the path to your CA file and `YOUR_SENDER_COMP_ID` with your actual service account ID:
 
 ```ini
-[DEFAULT]
-ConnectionType=initiator
-ReconnectInterval=60
-SenderCompID=your-service-account-id
-TargetCompID=COIN
-SocketConnectHost=fix-md.prime.coinbase.com
-SocketConnectPort=4199
-HeartBtInt=30
-LogoutTimeout=5
-LogonTimeout=5
+SSLCAFile=/Users/yourname/system-roots.pem
+SenderCompID=YOUR_SVC_ACCOUNT_ID
 ```
 
 ## Environment Variables
