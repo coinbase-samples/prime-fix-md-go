@@ -2,6 +2,9 @@
 .env
 .env*
 
+# Configuration files
+fix.cfg
+
 # Build output
 build/
 fix-md-client

@@ -43,6 +43,9 @@ type FixApp struct {
 	SessionId  quickfix.SessionID
 	TradeStore *TradeStore
 	Db         *database.MarketDataDb
+
+	shouldExit    bool
+	lastLogonTime time.Time
 }
 
 func NewConfig(apiKey, apiSecret, passphrase, senderCompId, targetCompId, portfolioId string) *Config {
@@ -63,6 +66,7 @@ func NewFixApp(config *Config, db *database.MarketDataDb) *FixApp {
 		Config:     config,
 		TradeStore: tradeStore,
 		Db:         db,
+		shouldExit: false,
 	}
 }
 
@@ -72,6 +76,12 @@ func (a *FixApp) OnCreate(sid quickfix.SessionID) {
 
 func (a *FixApp) OnLogout(sid quickfix.SessionID) {
 	log.Println("Logout", sid)
+
+	timeSinceLogon := time.Since(a.lastLogonTime)
+	if timeSinceLogon < 5*time.Second || a.lastLogonTime.IsZero() {
+		log.Printf("Authentication failed. Exiting to prevent reconnection loop.")
+		a.shouldExit = true
+	}
 }
 
 func (a *FixApp) FromAdmin(_ *quickfix.Message, _ quickfix.SessionID) quickfix.MessageRejectError {
@@ -84,6 +94,7 @@ func (a *FixApp) ToApp(_ *quickfix.Message, _ quickfix.SessionID) error {
 
 func (a *FixApp) OnLogon(sid quickfix.SessionID) {
 	a.SessionId = sid
+	a.lastLogonTime = time.Now()
 	log.Println("✓ FIX logon", sid)
 	a.displayConnectionSuccess()
 	a.displayHelp()
@@ -150,6 +161,10 @@ func getMdReqRejReasonDesc(reason string) string {
 	default:
 		return "Unknown reason"
 	}
+}
+
+func (a *FixApp) ShouldExit() bool {
+	return a.shouldExit
 }
 
 func (a *FixApp) handleMarketDataMessage(msg *quickfix.Message) {

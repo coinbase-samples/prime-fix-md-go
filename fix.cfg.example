@@ -4,7 +4,7 @@ SocketUseSSL=Y
 SSLProtocols=TLSv1.2
 SocketConnectPort=4198
 SocketConnectHost=fix.prime.coinbase.com
-SSLCAFile=/Users/jeff/system-roots.pem
+SSLCAFile=YOUR_SSL_CA_FILE_PATH
 SSLVerifyCertificates=Y
 SSLServerName=fix.prime.coinbase.com
 
@@ -12,8 +12,7 @@ StartTime=00:00:00
 EndTime=00:00:00
 HeartBtInt=30
 ReconnectInterval=10
-UseDataDictionary=Y
-DataDictionary=FIX50SP2.xml
+UseDataDictionary=N
 ResetOnLogon=Y
 ValidateIncomingMessage=N
 ValidateUserDefinedFields=N
@@ -21,6 +20,6 @@ ValidateUserDefinedFields=N
 [SESSION]
 BeginString=FIXT.1.1
 DefaultApplVerID=9
-SenderCompID=2900b9b2-9b3c-5e4e-a35d-5b72453fa907
+SenderCompID=YOUR_SENDER_COMP_ID
 TargetCompID=COIN
 FileStorePath=./Sessions/

@@ -61,6 +61,11 @@ func Repl(app *FixApp) {
 	defer rl.Close()
 
 	for {
+		if app.ShouldExit() {
+			fmt.Println("Exiting due to authentication failures. Please check your credentials.")
+			return
+		}
+
 		line, err := rl.Readline()
 		if err != nil {
 			break
@@ -78,7 +83,9 @@ func Repl(app *FixApp) {
 		case "unsubscribe":
 			app.handleUnsubscribeRequest(parts)
 		case "status":
-			app.handleStatusRequest()
+			if !app.handleStatusRequest() {
+				return
+			}
 		case "help":
 			app.displayHelp()
 		case "version":
@@ -238,7 +245,12 @@ Examples:
 	}
 }
 
-func (a *FixApp) handleStatusRequest() {
+func (a *FixApp) handleStatusRequest() bool {
+	if a.ShouldExit() {
+		fmt.Println("Exiting due to authentication failures. Please check your credentials.")
+		return false
+	}
+
 	fmt.Printf("Session: %s ", a.SessionId)
 	if a.SessionId.String() != "" {
 		fmt.Println("(Connected)")
@@ -249,7 +261,7 @@ func (a *FixApp) handleStatusRequest() {
 	subscriptionsBySymbol := a.TradeStore.GetSubscriptionsBySymbol()
 	if len(subscriptionsBySymbol) == 0 {
 		fmt.Println("No active subscriptions")
-		return
+		return true
 	}
 
 	fmt.Print(`
@@ -289,4 +301,6 @@ Active Subscriptions:
 	}
 
 	fmt.Println("└─────────────┴──────────────────┴─────────────┴─────────────┴──────────────┴──────────────────┘")
+
+	return true
 }
