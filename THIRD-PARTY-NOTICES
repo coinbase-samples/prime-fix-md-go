@@ -1,0 +1,53 @@
+Prime FIX Market Data Client - Third Party Notices
+
+This project uses the following third-party libraries:
+
+================================================================================
+
+1. github.com/quickfixgo/quickfix v0.9.6
+   Copyright (c) 2018-present QuickFIX Go Authors
+   License: MIT License
+   https://github.com/quickfixgo/quickfix/blob/master/LICENSE
+
+2. github.com/mattn/go-sqlite3 v1.14.22
+   Copyright (c) 2014 Yasuhiro Matsumoto
+   License: MIT License
+   https://github.com/mattn/go-sqlite3/blob/master/LICENSE
+
+3. github.com/chzyer/readline v1.5.1
+   Copyright (c) 2015 chzyer
+   License: MIT License
+   https://github.com/chzyer/readline/blob/master/LICENSE
+
+4. github.com/pires/go-proxyproto v0.7.0 (indirect dependency)
+   Copyright (c) 2014 Paulo Pires
+   License: Apache License 2.0
+   https://github.com/pires/go-proxyproto/blob/main/LICENSE
+
+5. github.com/pkg/errors v0.9.1 (indirect dependency)
+   Copyright (c) 2015, Dave Cheney
+   License: BSD 2-Clause License
+   https://github.com/pkg/errors/blob/master/LICENSE
+
+6. github.com/shopspring/decimal v1.4.0 (indirect dependency)
+   Copyright (c) 2015 Spring, Inc.
+   License: MIT License
+   https://github.com/shopspring/decimal/blob/master/LICENSE
+
+7. golang.org/x/net v0.24.0 (indirect dependency)
+   Copyright (c) 2009 The Go Authors
+   License: BSD 3-Clause License
+   https://golang.org/LICENSE
+
+8. golang.org/x/sys v0.19.0 (indirect dependency)
+   Copyright (c) 2009 The Go Authors
+   License: BSD 3-Clause License
+   https://golang.org/LICENSE
+
+================================================================================
+
+For the complete license text of each dependency, please refer to the URLs
+provided above or check the vendor directory if vendoring is enabled.
+
+All third-party libraries are used under their respective licenses and retain
+their original copyright notices.
