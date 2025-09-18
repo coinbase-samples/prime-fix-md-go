@@ -140,12 +140,12 @@ Examples:
 	var flagStart int
 
 	// Find where flags start (first argument starting with --)
-	for i := 1; i < len(parts); i++ {
-		if strings.HasPrefix(parts[i], "--") {
-			flagStart = i
+	for i, part := range parts[1:] {
+		if strings.HasPrefix(part, "--") {
+			flagStart = i + 1 // offset since we skipped parts[0]
 			break
 		}
-		symbols = append(symbols, strings.ToUpper(parts[i]))
+		symbols = append(symbols, strings.ToUpper(part))
 	}
 
 	// If no flags found, all remaining parts are symbols
