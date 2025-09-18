@@ -89,7 +89,7 @@ go run cmd/main.go
 
 #### Market Data Request
 ```bash
-md <symbol> [flags...]
+md <symbol1> [symbol2 symbol3 ...] [flags...]
 ```
 
 **Subscription Types:**
@@ -156,6 +156,11 @@ md ETH-USD --snapshot --o --c --h --l --v
 # Subscribe to live candle updates (allow 30s for connection to establish)
 md BTC-USD --subscribe --o --c --h --l --v
 
+# Multi-symbol examples (NEW!)
+md BTC-USD ETH-USD --snapshot --trades            # Multiple symbol trade snapshot
+md BTC-USD ETH-USD SOL-USD --snapshot --depth 1   # Top of book for 3 symbols
+md BTC-USD ETH-USD --subscribe --trades           # Live trades for multiple symbols
+
 # Unsubscribe examples
 unsubscribe BTC-USD                    # Cancel ALL BTC-USD subscriptions
 unsubscribe md_1757035274634111000     # Cancel specific subscription by reqId
@@ -173,6 +178,19 @@ You can have multiple active subscriptions per symbol. For example:
 ```bash
 md BTC-USD --subscribe --trades              # Live trades (reqId: md_123)
 md BTC-USD --subscribe --depth 5             # Live L5 bids+offers (5 bids + 5 offers, reqId: md_456)
+```
+
+### Multi-Symbol Requests
+You can request data for multiple symbols in a single command:
+```bash
+# Get snapshot data for multiple symbols at once
+md BTC-USD ETH-USD SOL-USD --snapshot --trades
+
+# Subscribe to live updates for multiple symbols  
+md BTC-USD ETH-USD --subscribe --depth 1
+
+# Unsubscribe from multiple symbols
+md BTC-USD ETH-USD SOL-USD --unsubscribe
 ```
 
 ### Subscription Tracking
