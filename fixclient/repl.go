@@ -106,7 +106,7 @@ type MdRequestFlags struct {
 
 func (a *FixApp) handleDirectMdRequest(parts []string) {
 	if len(parts) < 2 {
-		fmt.Print(`Usage: md <symbol> [flags...]
+		fmt.Print(`Usage: md <symbol1> [symbol2 symbol3 ...] [flags...]
 
 Subscription Flags:
   --snapshot              - Snapshot only
@@ -127,16 +127,39 @@ Entry Type Flags:
 
 Examples:
   md BTC-USD --snapshot --trades
-  md BTC-USD --snapshot --depth 1
-  md BTC-USD --subscribe --depth 10
+  md BTC-USD ETH-USD --snapshot --depth 1
+  md BTC-USD ETH-USD SOL-USD --subscribe --depth 10
   md ETH-USD --snapshot --o --c --h --l --v
   md BTC-USD --unsubscribe
 `)
 		return
 	}
 
-	symbol := strings.ToUpper(parts[1])
-	flags := a.parseMdFlags(parts[2:])
+	// Parse symbols and flags
+	var symbols []string
+	var flagStart int
+
+	// Find where flags start (first argument starting with --)
+	for i, part := range parts[1:] {
+		if strings.HasPrefix(part, "--") {
+			flagStart = i + 1 // offset since we skipped parts[0]
+			break
+		}
+		symbols = append(symbols, strings.ToUpper(part))
+	}
+
+	// If no flags found, all remaining parts are symbols
+	if flagStart == 0 {
+		flagStart = len(parts)
+	}
+
+	// Parse flags from flagStart onwards
+	var flagArgs []string
+	if flagStart < len(parts) {
+		flagArgs = parts[flagStart:]
+	}
+
+	flags := a.parseMdFlags(flagArgs)
 
 	// Validate we have a subscription type
 	if flags.subscriptionType == "" {
@@ -146,7 +169,9 @@ Examples:
 
 	// For unsubscribe, we don't need depth or entry types
 	if flags.subscriptionType == constants.SubscriptionRequestTypeUnsubscribe {
-		a.sendUnsubscribeBySymbol(symbol)
+		for _, symbol := range symbols {
+			a.sendUnsubscribeBySymbol(symbol)
+		}
 		return
 	}
 
@@ -172,7 +197,7 @@ Examples:
 		description = "Live Subscription"
 	}
 
-	a.sendMarketDataRequestWithOptions(symbol, flags.subscriptionType, flags.marketDepth, flags.entryTypes, description)
+	a.sendMarketDataRequestWithOptions(symbols, flags.subscriptionType, flags.marketDepth, flags.entryTypes, description)
 }
 
 func (a *FixApp) parseMdFlags(args []string) MdRequestFlags {

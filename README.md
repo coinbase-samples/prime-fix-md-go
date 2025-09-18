@@ -89,7 +89,7 @@ go run cmd/main.go
 
 #### Market Data Request
 ```bash
-md <symbol> [flags...]
+md <symbol1> [symbol2 symbol3 ...] [flags...]
 ```
 
 **Subscription Types:**
@@ -155,6 +155,11 @@ md ETH-USD --snapshot --o --c --h --l --v
 
 # Subscribe to live candle updates (allow 30s for connection to establish)
 md BTC-USD --subscribe --o --c --h --l --v
+
+# Multi-symbol examples
+md BTC-USD ETH-USD --snapshot --trades            # Multiple symbol trade snapshot
+md BTC-USD ETH-USD SOL-USD --snapshot --depth 1   # Top of book for 3 symbols
+md BTC-USD ETH-USD --subscribe --trades           # Live trades for multiple symbols
 
 # Unsubscribe examples
 unsubscribe BTC-USD                    # Cancel ALL BTC-USD subscriptions

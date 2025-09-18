@@ -51,7 +51,7 @@ func BuildLogon(
 
 func BuildMarketDataRequest(
 	mdReqId string,
-	symbol string,
+	symbols []string,
 	subscriptionRequestType string,
 	marketDepth string,
 	senderCompId string,
@@ -88,7 +88,9 @@ func BuildMarketDataRequest(
 		quickfix.GroupTemplate{quickfix.GroupElement(constants.TagSymbol)},
 	)
 
-	setString(relatedSymGroup.Add(), constants.TagSymbol, symbol)
+	for _, symbol := range symbols {
+		setString(relatedSymGroup.Add(), constants.TagSymbol, symbol)
+	}
 	m.Body.SetGroup(relatedSymGroup)
 	return m
 }

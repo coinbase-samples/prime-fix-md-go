@@ -54,7 +54,7 @@ func (a *FixApp) sendUnsubscribeBySymbol(symbol string) {
 	for _, sub := range symbolSubs {
 		msg := builder.BuildMarketDataRequest(
 			sub.MdReqId,
-			symbol,
+			[]string{symbol},
 			constants.SubscriptionRequestTypeUnsubscribe,
 			"0",
 			a.Config.SenderCompId,
@@ -82,7 +82,7 @@ func (a *FixApp) sendUnsubscribeByReqId(reqId string) {
 
 	msg := builder.BuildMarketDataRequest(
 		reqId,
-		sub.Symbol,
+		[]string{sub.Symbol},
 		constants.SubscriptionRequestTypeUnsubscribe,
 		"0",
 		a.Config.SenderCompId,
@@ -99,22 +99,26 @@ func (a *FixApp) sendUnsubscribeByReqId(reqId string) {
 	}
 }
 
-func (a *FixApp) sendMarketDataRequest(symbol, subscriptionType, description string) {
-	a.sendMarketDataRequestWithOptions(symbol, subscriptionType, "0", []string{constants.MdEntryTypeTrade}, description)
+func (a *FixApp) sendMarketDataRequest(symbols []string, subscriptionType, description string) {
+	a.sendMarketDataRequestWithOptions(symbols, subscriptionType, "0", []string{constants.MdEntryTypeTrade}, description)
 }
 
-func (a *FixApp) sendMarketDataRequestWithOptions(symbol, subscriptionType, marketDepth string, entryTypes []string, description string) {
+func (a *FixApp) sendMarketDataRequestWithOptions(symbols []string, subscriptionType, marketDepth string, entryTypes []string, description string) {
 	reqId := fmt.Sprintf("md_%d", time.Now().UnixNano())
 
 	if subscriptionType == constants.SubscriptionRequestTypeSubscribe {
-		a.TradeStore.AddSubscription(symbol, subscriptionType, reqId)
+		for _, symbol := range symbols {
+			a.TradeStore.AddSubscription(symbol, subscriptionType, reqId)
+		}
 	}
 
-	a.createDatabaseSession(symbol, subscriptionType, marketDepth, entryTypes, reqId)
+	for _, symbol := range symbols {
+		a.createDatabaseSession(symbol, subscriptionType, marketDepth, entryTypes, reqId)
+	}
 
 	msg := builder.BuildMarketDataRequest(
 		reqId,
-		symbol,
+		symbols,
 		subscriptionType,
 		marketDepth,
 		a.Config.SenderCompId,
@@ -124,8 +128,10 @@ func (a *FixApp) sendMarketDataRequestWithOptions(symbol, subscriptionType, mark
 
 	if err := quickfix.Send(msg); err != nil {
 		log.Printf("Error sending market data request: %v", err)
-		fmt.Printf("Failed to send %s request for %s\n", description, symbol)
-		a.TradeStore.RemoveSubscription(symbol)
+		fmt.Printf("Failed to send %s request for %v\n", description, symbols)
+		for _, symbol := range symbols {
+			a.TradeStore.RemoveSubscription(symbol)
+		}
 	} else {
 		entryTypesStr := ""
 		for i, et := range entryTypes {
@@ -134,7 +140,7 @@ func (a *FixApp) sendMarketDataRequestWithOptions(symbol, subscriptionType, mark
 			}
 			entryTypesStr += getMdEntryTypeName(et)
 		}
-		fmt.Printf("%s request sent for %s (depth=%s, types=[%s], reqId=%s)\n",
-			description, symbol, marketDepth, entryTypesStr, reqId)
+		fmt.Printf("%s request sent for %v (depth=%s, types=[%s], reqId=%s)\n",
+			description, symbols, marketDepth, entryTypesStr, reqId)
 	}
 }
